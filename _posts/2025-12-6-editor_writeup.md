@@ -498,4 +498,5 @@ drwxr-xr-x  3 root root 4096 Apr 27  2023 .local
 drwxr-xr-x  2 root root 4096 Jun 19 08:14 scripts
 drwx------  3 root root 4096 Apr 27  2023 snap
 drwx------  2 root root 4096 Jun 19 11:30 .ssh
+```
 

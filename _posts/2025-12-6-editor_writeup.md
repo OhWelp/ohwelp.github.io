@@ -62,11 +62,11 @@ Nmap done: 1 IP address (1 host up) scanned in 423.25 seconds
 
 Port 80 is a static website for a free, Python-based text editor called SimplistCode Pro. Surprisingly, the application is an actual, working text editor with downloadable Debian and Windows packages. The application uses PyInstaller, which means it is relatively easy to pull a lot of data out of it using some freely available utilities. However, it ends up not getting us anywhere, so I’ll skip the details. 
 
-![image](/../images/editor/simplist1.png)
+![image](/images/editor/simplist1.png)
 
 On a more productive note, the “Docs” link in the upper right-hand corner sends us to wiki.editor.htb. This appears to be the same application as the one running on port 8080. Visiting the website reveals it’s an XWiki instance:
 
-![image](/../images/editor/xwiki.png)
+![image](/images/editor/xwiki.png)
 
 XWiki is a Java-based, open-source Wiki software. We find a user named “neal” on it, and a couple of mostly uninteresting pages about SimplistCode Pro.
 
@@ -227,7 +227,7 @@ Yup. There we go. Let’s forward the port:
 
 We get a monitoring panel for netdata. There’s nothing we can do here, but there is a big banner at the top:
 
-![image.png](/../images/editor/panel.png)
+![image.png](/images/editor/panel.png)
 
 The agent is flagged for needing a “critical” severity security patch. It just might have an exploitable CVE.
 
@@ -358,7 +358,7 @@ Then we run:
 
 And the result?
 
-![image](/../images/editor/rooted.png)
+![image](/images/editor/rooted.png)
 
 Boom! The output also contains root.txt! 
 

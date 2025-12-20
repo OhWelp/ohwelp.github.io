@@ -202,7 +202,7 @@ oliver@editor.htb's password:
 Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-151-generic x86_64)
 ```
 
-An initial connection to the database with those credentials yields nothing of interest. But this turns out to be a classic credential reuse scenario: we can use that password to ssh into oliver. We grab the user flag and proceed with further enumeration.
+The user flag is here. We can now proceed with further enumeration.
 
 First, let’s learn about our user:
 
